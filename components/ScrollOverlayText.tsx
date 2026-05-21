@@ -15,7 +15,7 @@ const textSegments = [
   {
     range: [0.45, 0.55],
     text: 'AI-Powered Disease Detection',
-    subtext: 'Early prediction with 81% accuracy',
+    subtext: 'Early prediction with 86.76% accuracy',
   },
   {
     range: [0.75, 0.85],

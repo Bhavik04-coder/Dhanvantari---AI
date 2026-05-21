@@ -139,7 +139,7 @@ export default function PredictionForm({ onClose }: PredictionFormProps) {
             <div>
               <h3 className="text-xl font-bold text-gray-800">AI Disease Prediction</h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                {SYMPTOMS.length} symptoms · 631 diseases · 86.7% accuracy
+                {SYMPTOMS.length} symptoms · 631 diseases · 86.76% accuracy · F1 87.95%
               </p>
             </div>
           </div>

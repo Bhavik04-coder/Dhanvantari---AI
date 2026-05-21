@@ -32,13 +32,27 @@ export default function ReportsAnalytics() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold mb-2">AI Prediction Accuracy</h2>
-            <p className="text-blue-100">Based on 1,284 verified predictions</p>
+            <p className="text-blue-100">DiseaseResNet · 631 diseases · test set evaluation</p>
+            <div className="mt-4 grid grid-cols-3 gap-4">
+              <div className="bg-white/10 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold">87.66%</div>
+                <div className="text-xs text-blue-200 mt-1">Precision</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold">89.22%</div>
+                <div className="text-xs text-blue-200 mt-1">Recall</div>
+              </div>
+              <div className="bg-white/10 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold">87.95%</div>
+                <div className="text-xs text-blue-200 mt-1">F1 Score</div>
+              </div>
+            </div>
           </div>
           <div className="text-right">
-            <div className="text-6xl font-bold mb-2">92.4%</div>
+            <div className="text-6xl font-bold mb-2">86.76%</div>
             <div className="flex items-center gap-2 justify-end">
               <TrendingUp className="w-5 h-5" />
-              <span className="text-lg">+2.3% this month</span>
+              <span className="text-lg">Test Accuracy</span>
             </div>
           </div>
         </div>

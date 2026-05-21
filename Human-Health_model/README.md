@@ -4,7 +4,7 @@ Disease prediction API using a Deep Residual Neural Network + RAG-powered medica
 
 ## Stack
 - **FastAPI** — REST API
-- **PyTorch** — Deep Residual Network (86.7% accuracy, 631 diseases)
+- **PyTorch** — Deep Residual Network (86.76% accuracy, 87.95% F1, 631 diseases)
 - **Ollama + llama3.2** — Free-form medical Q&A
 - **TF-IDF RAG** — Retrieval from 4 medical CSV datasets (description, diet, precautions, workout)
 - **scikit-learn** — TF-IDF vectorizer for RAG retrieval

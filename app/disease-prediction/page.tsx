@@ -134,7 +134,7 @@ export default function DiseasePredictionPage() {
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-800">AI Disease Prediction</h1>
                 <p className="text-gray-500 mt-1">
-                  Apex Deep Residual Network · 631 diseases · 86.7% accuracy · {SYMPTOMS.length} symptoms
+                  Apex Deep Residual Network · 631 diseases · 86.76% accuracy · F1 87.95% · {SYMPTOMS.length} symptoms
                 </p>
               </div>
             </div>

@@ -153,7 +153,7 @@ export default function AIPredictionReview() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">AI Prediction Review</h1>
-          <p className="text-sm text-gray-500 mt-1">Apex Deep Residual Network · 631 diseases · 86.7% accuracy</p>
+          <p className="text-sm text-gray-500 mt-1">Apex Deep Residual Network · 631 diseases · 86.76% accuracy · 87.95% F1 · 87.66% precision · 89.22% recall</p>
         </div>
         <button
           type="button"

@@ -18,13 +18,13 @@ export const metadata: Metadata = {
     default: 'Dhanvantari AI - Smart Healthcare Monitoring',
     template: '%s | Dhanvantari AI',
   },
-  description: 'AI-powered healthcare monitoring and disease prediction system with 98% accuracy',
+  description: 'AI-powered healthcare monitoring and disease prediction system with 86.76% accuracy',
   keywords: ['healthcare', 'AI', 'disease prediction', 'telemedicine', 'health monitoring'],
   openGraph: {
     type: 'website',
     siteName: 'Dhanvantari AI',
     title: 'Dhanvantari AI - Smart Healthcare Monitoring',
-    description: 'AI-powered healthcare monitoring and disease prediction system with 98% accuracy',
+    description: 'AI-powered healthcare monitoring and disease prediction system with 86.76% accuracy',
   },
   twitter: {
     card: 'summary_large_image',

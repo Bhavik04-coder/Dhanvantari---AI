@@ -7,7 +7,10 @@ export const SITE_CONFIG = {
 }
 
 export const STATS = {
-  accuracy: 98,
+  accuracy: 86.76,
+  f1: 87.95,
+  precision: 87.66,
+  recall: 89.22,
   monitoring: '24/7',
   security: '100%',
   activeUsers: '50K+',

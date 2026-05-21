@@ -17,7 +17,7 @@ export default function HeroSection() {
   const router = useRouter();
   const [showPrediction, setShowPrediction] = useState(false);
   const [platformStats, setPlatformStats] = useState<PlatformStats>({
-    accuracy: '98%',
+    accuracy: '86.76%',
     predictions: '50K+',
     support: '24/7',
   });

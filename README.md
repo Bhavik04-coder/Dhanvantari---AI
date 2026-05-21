@@ -42,7 +42,7 @@
 
 ### Platform Statistics
 
-- **669 Disease Classifications** with 80% accuracy
+- **631 Disease Classifications** with 86.76% accuracy
 - **130+ Symptoms** in searchable database
 - **45+ Medicines** from FDA API + Indian catalog
 - **Real-time Notifications** for both patients and doctors
@@ -825,9 +825,10 @@ Output: Disease (669 classes) + Confidence
 
 | Metric | Score |
 |--------|-------|
-| Accuracy | 80.0% |
-| Macro F1 | 0.76 |
-| Weighted F1 | 0.80 |
+| Accuracy | **86.76%** |
+| Precision (Macro) | **87.66%** |
+| Recall (Macro) | **89.22%** |
+| F1 Score (Macro) | **87.95%** |
 | Training Time | ~45 min (GPU) |
 | Inference Time | <100ms |
 
