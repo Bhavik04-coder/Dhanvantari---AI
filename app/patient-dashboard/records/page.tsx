@@ -5,7 +5,7 @@ import { ArrowLeft, FlaskConical, Brain, Activity, Pill, Loader2, ChevronDown, C
 import PatientNavbar from '@/components/patient/PatientNavbar';
 import Footer from '@/components/patient/Footer';
 import NeuralNetworkContainer from '@/components/ui/NeuralNetworkContainer';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Prediction { id: string; disease: string; confidence: number; symptoms: string[]; explanation: string; status: string; doctorName: string; createdAt: string; initiatedBy?: string; }
 interface LabTest { id: string; testName: string; status: string; priority: string; diagnosisReason: string; labValues: { name: string; value: string; unit: string; referenceRange: string; status: string }[]; requestDate: string; doctorName: string | null; initiatedBy: string; price: number | null; }
@@ -15,7 +15,14 @@ interface Recording { id: string; title: string; recordingUrl: string; durationM
 
 export default function PatientRecordsPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<'predictions' | 'labs' | 'vitals' | 'prescriptions' | 'recordings'>('predictions');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab');
+  const validTabs = ['predictions', 'labs', 'vitals', 'prescriptions', 'recordings'] as const;
+  const [tab, setTab] = useState<typeof validTabs[number]>(
+    validTabs.includes(initialTab as typeof validTabs[number])
+      ? (initialTab as typeof validTabs[number])
+      : 'predictions',
+  );
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [labTests, setLabTests] = useState<LabTest[]>([]);
   const [vitals, setVitals] = useState<Vital[]>([]);
@@ -35,16 +42,24 @@ export default function PatientRecordsPage() {
         if (!r.ok) throw new Error(data.error ?? `Records fetch failed (${r.status})`);
         return data;
       }),
+      fetch('/api/patient/prescriptions').then(async r => {
+        const data = await r.json();
+        if (!r.ok) return { prescriptions: [] };
+        return data;
+      }),
       fetch('/api/patient/recordings').then(async r => {
         const data = await r.json();
         if (!r.ok) throw new Error(data.error ?? `Recordings fetch failed (${r.status})`);
         return data;
       }),
-    ]).then(([records, recs]) => {
+    ]).then(([records, rxData, recs]) => {
       setPredictions(records.predictions ?? []);
       setLabTests(records.labTests ?? []);
       setVitals(records.vitals ?? []);
-      setPrescriptions(records.prescriptions ?? []);
+      const rxList = rxData.prescriptions?.length
+        ? rxData.prescriptions
+        : (records.prescriptions ?? []);
+      setPrescriptions(rxList);
       setRecordings(recs.recordings ?? []);
     }).catch(err => {
       console.error('Failed to load health records:', err);

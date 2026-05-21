@@ -1,87 +1,113 @@
 ﻿'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FlaskConical, Calendar, FileText, Clock, ArrowLeft,
   Search, Star, Shield, Zap, HeartPulse,
   Microscope, TestTube, BarChart3,
   CheckCircle, Users, Award, Phone, MapPin,
-  Droplets, Activity, Beaker, X, Plus, Minus,
-  ChevronDown, Droplet, Printer, Share2, CheckCircle2,
+  Droplets, Activity, Beaker, X, Plus,
+  ChevronDown, Printer, Share2, CheckCircle2,
+  AlertCircle, TrendingUp,
 } from 'lucide-react';
 import { useDoctorState, TestRequest } from './DoctorStateContext';
 
-interface Test {
+// ─── Static catalog data ──────────────────────────────────────────────────
+
+interface CatalogTest {
   id: number;
   name: string;
   price: number;
   originalPrice?: number;
   time: string;
   popular: boolean;
-  color: string;
+  category: string;
   description: string;
   preparation?: string;
-  category: string;
+  colorClass: string;
+  bgClass: string;
 }
 
-interface Package {
+const TESTS: CatalogTest[] = [
+  { id: 1,  name: 'Complete Blood Count (CBC)',    price: 299,  originalPrice: 399,  time: '6 hrs',  popular: true,  category: 'Blood',     description: 'Measures different components of blood',    preparation: 'No fasting required',          colorClass: 'text-blue-600',   bgClass: 'bg-blue-50'   },
+  { id: 2,  name: 'Lipid Profile',                 price: 499,  originalPrice: 699,  time: '12 hrs', popular: false, category: 'Blood',     description: 'Cholesterol and triglycerides test',        preparation: '12 hours fasting required',    colorClass: 'text-teal-600',   bgClass: 'bg-teal-50'   },
+  { id: 3,  name: 'Liver Function Test',           price: 599,                       time: '24 hrs', popular: false, category: 'Blood',     description: 'Evaluates liver health',                    preparation: '8 hours fasting recommended',  colorClass: 'text-violet-600', bgClass: 'bg-violet-50' },
+  { id: 4,  name: 'Kidney Function Test',          price: 549,                       time: '24 hrs', popular: false, category: 'Blood',     description: 'Assesses kidney performance',               preparation: 'No special preparation',       colorClass: 'text-pink-600',   bgClass: 'bg-pink-50'   },
+  { id: 5,  name: 'Thyroid Profile (T3/T4/TSH)',   price: 799,  originalPrice: 999,  time: '24 hrs', popular: true,  category: 'Hormone',   description: 'Complete thyroid function assessment',      preparation: 'Morning sample preferred',     colorClass: 'text-orange-600', bgClass: 'bg-orange-50' },
+  { id: 6,  name: 'Diabetes Screening (HbA1c)',    price: 449,                       time: '6 hrs',  popular: false, category: 'Blood',     description: '3-month average blood sugar',               preparation: 'No fasting required',          colorClass: 'text-green-600',  bgClass: 'bg-green-50'  },
+  { id: 7,  name: 'Vitamin D & B12 Panel',         price: 899,  originalPrice: 1199, time: '48 hrs', popular: true,  category: 'Vitamin',   description: 'Essential vitamin levels',                  preparation: 'No special preparation',       colorClass: 'text-yellow-600', bgClass: 'bg-yellow-50' },
+  { id: 8,  name: 'COVID-19 RT-PCR',               price: 699,                       time: '8 hrs',  popular: false, category: 'Infection', description: 'COVID-19 detection test',                   preparation: 'No eating 1 hour before',      colorClass: 'text-red-600',    bgClass: 'bg-red-50'    },
+  { id: 9,  name: 'Iron Studies',                  price: 349,                       time: '12 hrs', popular: false, category: 'Blood',     description: 'Iron levels and storage',                   preparation: 'Morning sample preferred',     colorClass: 'text-cyan-600',   bgClass: 'bg-cyan-50'   },
+  { id: 10, name: 'Urine Routine Analysis',        price: 199,                       time: '4 hrs',  popular: false, category: 'Urine',     description: 'Complete urine examination',                preparation: 'First morning sample',         colorClass: 'text-violet-600', bgClass: 'bg-violet-50' },
+  { id: 11, name: 'Calcium & Phosphorus',          price: 399,                       time: '12 hrs', popular: false, category: 'Blood',     description: 'Bone health markers',                       preparation: 'No special preparation',       colorClass: 'text-emerald-600',bgClass: 'bg-emerald-50'},
+  { id: 12, name: 'Full Body Health Checkup',      price: 1999, originalPrice: 2999, time: '48 hrs', popular: true,  category: 'Package',   description: 'Comprehensive health screening',            preparation: '12 hours fasting required',    colorClass: 'text-blue-700',   bgClass: 'bg-blue-50'   },
+];
+
+interface CatalogPackage {
   id: number;
   name: string;
   tests: number;
   price: number;
   originalPrice?: number;
-  icon: React.ReactNode;
-  color: string;
-  bg: string;
-  testList: string[];
   description: string;
+  testList: string[];
+  colorClass: string;
+  bgClass: string;
+  borderClass: string;
+  btnClass: string;
 }
 
-const TESTS: Test[] = [
-  { id: 1, name: 'Complete Blood Count (CBC)', price: 299, originalPrice: 399, time: '6 hrs', popular: true, color: '#2563eb', description: 'Measures different components of blood', preparation: 'No fasting required', category: 'Blood' },
-  { id: 2, name: 'Lipid Profile', price: 499, originalPrice: 699, time: '12 hrs', popular: false, color: '#0d9488', description: 'Cholesterol and triglycerides test', preparation: '12 hours fasting required', category: 'Blood' },
-  { id: 3, name: 'Liver Function Test', price: 599, time: '24 hrs', popular: false, color: '#7c3aed', description: 'Evaluates liver health', preparation: '8 hours fasting recommended', category: 'Blood' },
-  { id: 4, name: 'Kidney Function Test', price: 549, time: '24 hrs', popular: false, color: '#db2777', description: 'Assesses kidney performance', preparation: 'No special preparation', category: 'Blood' },
-  { id: 5, name: 'Thyroid Profile (T3/T4/TSH)', price: 799, originalPrice: 999, time: '24 hrs', popular: true, color: '#ea580c', description: 'Complete thyroid function assessment', preparation: 'Morning sample preferred', category: 'Hormone' },
-  { id: 6, name: 'Diabetes Screening (HbA1c)', price: 449, time: '6 hrs', popular: false, color: '#16a34a', description: '3-month average blood sugar', preparation: 'No fasting required', category: 'Blood' },
-  { id: 7, name: 'Vitamin D & B12 Panel', price: 899, originalPrice: 1199, time: '48 hrs', popular: true, color: '#ca8a04', description: 'Essential vitamin levels', preparation: 'No special preparation', category: 'Vitamin' },
-  { id: 8, name: 'COVID-19 RT-PCR', price: 699, time: '8 hrs', popular: false, color: '#dc2626', description: 'COVID-19 detection test', preparation: 'No eating 1 hour before', category: 'Infection' },
-  { id: 9, name: 'Iron Studies', price: 349, time: '12 hrs', popular: false, color: '#0891b2', description: 'Iron levels and storage', preparation: 'Morning sample preferred', category: 'Blood' },
-  { id: 10, name: 'Urine Routine Analysis', price: 199, time: '4 hrs', popular: false, color: '#7c3aed', description: 'Complete urine examination', preparation: 'First morning sample', category: 'Urine' },
-  { id: 11, name: 'Calcium & Phosphorus', price: 399, time: '12 hrs', popular: false, color: '#059669', description: 'Bone health markers', preparation: 'No special preparation', category: 'Blood' },
-  { id: 12, name: 'Full Body Health Checkup', price: 1999, originalPrice: 2999, time: '48 hrs', popular: true, color: '#1a4fba', description: 'Comprehensive health screening', preparation: '12 hours fasting required', category: 'Package' },
+const PACKAGES: CatalogPackage[] = [
+  { id: 101, name: 'Basic Wellness',   tests: 8,  price: 799,  originalPrice: 1299, description: 'Essential health screening package',    testList: ['CBC','Blood Sugar','Lipid Profile','Liver Function','Kidney Function','Thyroid','Vitamin D','Urine Analysis'], colorClass: 'text-blue-600',   bgClass: 'bg-blue-50',   borderClass: 'border-blue-200',   btnClass: 'bg-blue-600 hover:bg-blue-700'   },
+  { id: 102, name: 'Advanced Health',  tests: 18, price: 1499, originalPrice: 2499, description: 'Comprehensive health assessment',        testList: ['All Basic Tests','HbA1c','Iron Studies','Calcium','Vitamin B12','ECG','Chest X-Ray','More...'],              colorClass: 'text-teal-600',   bgClass: 'bg-teal-50',   borderClass: 'border-teal-200',   btnClass: 'bg-teal-600 hover:bg-teal-700'   },
+  { id: 103, name: 'Complete Body',    tests: 32, price: 2999, originalPrice: 4999, description: 'Full body diagnostic package',           testList: ['All Advanced Tests','Cardiac Markers','Tumor Markers','Hormone Panel','Allergy Tests','More...'],             colorClass: 'text-violet-600', bgClass: 'bg-violet-50', borderClass: 'border-violet-200', btnClass: 'bg-violet-600 hover:bg-violet-700'},
+  { id: 104, name: 'Diabetes Care',    tests: 12, price: 999,  originalPrice: 1599, description: 'Diabetes monitoring package',            testList: ['HbA1c','Fasting Sugar','PP Sugar','Lipid Profile','Kidney Function','Liver Function','More...'],              colorClass: 'text-pink-600',   bgClass: 'bg-pink-50',   borderClass: 'border-pink-200',   btnClass: 'bg-pink-600 hover:bg-pink-700'   },
 ];
 
-const PACKAGES: Package[] = [
-  {
-    id: 101, name: 'Basic Wellness', tests: 8, price: 799, originalPrice: 1299,
-    icon: <HeartPulse size={22} />, color: '#2563eb', bg: '#eff6ff',
-    testList: ['CBC', 'Blood Sugar', 'Lipid Profile', 'Liver Function', 'Kidney Function', 'Thyroid', 'Vitamin D', 'Urine Analysis'],
-    description: 'Essential health screening package',
-  },
-  {
-    id: 102, name: 'Advanced Health', tests: 18, price: 1499, originalPrice: 2499,
-    icon: <Activity size={22} />, color: '#0d9488', bg: '#f0fdfa',
-    testList: ['All Basic Tests', 'HbA1c', 'Iron Studies', 'Calcium', 'Vitamin B12', 'ECG', 'Chest X-Ray', 'More...'],
-    description: 'Comprehensive health assessment',
-  },
-  {
-    id: 103, name: 'Complete Body', tests: 32, price: 2999, originalPrice: 4999,
-    icon: <Microscope size={22} />, color: '#7c3aed', bg: '#f5f3ff',
-    testList: ['All Advanced Tests', 'Cardiac Markers', 'Tumor Markers', 'Hormone Panel', 'Allergy Tests', 'More...'],
-    description: 'Full body diagnostic package',
-  },
-  {
-    id: 104, name: 'Diabetes Care', tests: 12, price: 999, originalPrice: 1599,
-    icon: <Droplets size={22} />, color: '#db2777', bg: '#fdf2f8',
-    testList: ['HbA1c', 'Fasting Sugar', 'PP Sugar', 'Lipid Profile', 'Kidney Function', 'Liver Function', 'More...'],
-    description: 'Diabetes monitoring package',
-  },
-];
+// ─── Component ────────────────────────────────────────────────────────────
 
 export default function LabPathology() {
-  const { getTestsByDoctor, setTestRequests, testRequests, patients } = useDoctorState();
+  const { setTestRequests, testRequests, patients, appointments } = useDoctorState();
+
+  // Derive confirmed patients directly from appointments (ground truth from DB)
+  // This works even if the patient isn't in the doctor_patients link table yet
+  const confirmedAppointments = appointments.filter(a => a.status === 'Confirmed');
+
+  // Log for debugging — remove after confirming it works
+  if (typeof window !== 'undefined') {
+    console.log('[LabPathology] appointments total:', appointments.length,
+      '| confirmed:', confirmedAppointments.length,
+      '| patients:', patients.length,
+      '| sample apt:', appointments[0]);
+  }
+
+  // Build a deduplicated list of confirmed patients from appointments
+  // Prefer patientUserId match against patients list for full profile,
+  // but always fall back to appointment data so no one is ever missing
+  const confirmedPatients = (() => {
+    const seen = new Set<string>();
+    const result: { userId: string; name: string }[] = [];
+
+    confirmedAppointments.forEach(a => {
+      // Try to find the full patient profile
+      const fullPatient = patients.find(p =>
+        (a.patientUserId && a.patientUserId === p.userId) ||
+        (!a.patientUserId && a.patientName === p.name)
+      );
+
+      const key = a.patientUserId ?? a.patientName ?? a.id;
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      result.push({
+        userId: fullPatient?.userId ?? a.patientUserId ?? '',
+        name:   fullPatient?.name  ?? a.patientName   ?? 'Unknown Patient',
+      });
+    });
+
+    return result;
+  })();
 
   // View state
   const [view, setView] = useState<'catalog' | 'requests'>('catalog');
@@ -90,12 +116,11 @@ export default function LabPathology() {
   const [filterTab, setFilterTab] = useState('all');
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
   const [expandedPatient, setExpandedPatient] = useState<string | null>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const heroRef = useRef<HTMLDivElement>(null);
 
-  // Order modal state
+  // Order modal
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [prefilledTestName, setPrefilledTestName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [newOrder, setNewOrder] = useState({
     patientId: '',
     testName: '',
@@ -103,22 +128,25 @@ export default function LabPathology() {
     reason: '',
   });
 
-  const currentDoctorId = 1;
-  const allTests = getTestsByDoctor(currentDoctorId);
-  const pendingTests = allTests.filter(t => t.status === 'Pending');
-  const inProgressTests = allTests.filter(t => t.status === 'In Progress');
-  const completedTests = allTests.filter(t => t.status === 'Completed');
-  const testsByPatient = patients.map(patient => ({
+  // Derived lists
+  const pendingTests    = testRequests.filter(t => t.status === 'Pending');
+  const inProgressTests = testRequests.filter(t => t.status === 'In Progress');
+  const completedTests  = testRequests.filter(t => t.status === 'Completed');
+
+  const testsByPatient = confirmedPatients.map(patient => ({
     patient,
-    tests: allTests.filter(t => t.patientId === patient.userId),
+    tests: testRequests.filter(t =>
+      (patient.userId && t.patientId === patient.userId) ||
+      t.patientName === patient.name
+    ),
   })).filter(g => g.tests.length > 0);
 
   const getDisplayTests = () => {
     switch (activeTab) {
-      case 'pending': return pendingTests;
+      case 'pending':     return pendingTests;
       case 'in-progress': return inProgressTests;
-      case 'completed': return completedTests;
-      default: return [];
+      case 'completed':   return completedTests;
+      default:            return [];
     }
   };
 
@@ -127,135 +155,115 @@ export default function LabPathology() {
     (filterTab === 'all' || (filterTab === 'popular' && t.popular))
   );
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (heroRef.current) {
-        const rect = heroRef.current.getBoundingClientRect();
-        setMousePosition({
-          x: (e.clientX - rect.left) / rect.width,
-          y: (e.clientY - rect.top) / rect.height,
-        });
-      }
-    };
-    const el = heroRef.current;
-    if (el) {
-      el.addEventListener('mousemove', handleMouseMove);
-      return () => el.removeEventListener('mousemove', handleMouseMove);
-    }
-  }, [view]);
-
   const openOrderModal = (testName = '') => {
-    setPrefilledTestName(testName);
     setNewOrder({ patientId: '', testName, priority: 'Normal', reason: '' });
+    setSubmitError('');
     setShowOrderModal(true);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOrder.patientId || !newOrder.testName) return;
-    const patient = patients.find(p => p.userId === newOrder.patientId);
-    if (!patient) return;
 
-    const res = await fetch('/api/doctor/lab-tests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        patientId: patient.userId,
-        patientName: patient.name,
-        testName: newOrder.testName,
-        priority: newOrder.priority,
-        reason: newOrder.reason,
-      }),
-    });
-
-    if (res.ok) {
-      const { test } = await res.json();
-      setTestRequests(prev => [test, ...prev]);
+    const patient = confirmedPatients.find(p => p.userId === newOrder.patientId);
+    if (!patient) {
+      setSubmitError('Selected patient not found. Please choose a confirmed patient.');
+      return;
     }
 
-    setShowOrderModal(false);
-    setNewOrder({ patientId: '', testName: '', priority: 'Normal', reason: '' });
-    setView('requests');
-    setActiveTab('pending');
+    setSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const res = await fetch('/api/doctor/lab-tests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId:   patient.userId,
+          patientName: patient.name,
+          testName:    newOrder.testName,
+          priority:    newOrder.priority,
+          reason:      newOrder.reason,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSubmitError(data.error ?? 'Failed to create test request.');
+        return;
+      }
+
+      setTestRequests(prev => [data.test, ...prev]);
+      setShowOrderModal(false);
+      setNewOrder({ patientId: '', testName: '', priority: 'Normal', reason: '' });
+      setView('requests');
+      setActiveTab('pending');
+    } catch {
+      setSubmitError('Network error. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const requestTabs = [
-    { id: 'pending', label: 'Pending', icon: Clock, count: pendingTests.length },
-    { id: 'in-progress', label: 'In Progress', icon: Microscope, count: inProgressTests.length },
-    { id: 'completed', label: 'Completed', icon: CheckCircle2, count: completedTests.length },
-    { id: 'records', label: 'Patient Records', icon: Users, count: testsByPatient.length },
+    { id: 'pending',     label: 'Pending',         icon: Clock,        count: pendingTests.length    },
+    { id: 'in-progress', label: 'In Progress',      icon: Microscope,   count: inProgressTests.length },
+    { id: 'completed',   label: 'Completed',        icon: CheckCircle2, count: completedTests.length  },
+    { id: 'records',     label: 'Patient Records',  icon: Users,        count: testsByPatient.length  },
   ];
 
-  // ─── CATALOG VIEW ─────────────────────────────────────────────────────────
+  // ─── CATALOG VIEW ──────────────────────────────────────────────────────
   if (view === 'catalog') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-white">
 
         {/* Hero */}
-        <div
-          ref={heroRef}
-          className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-700 to-teal-600 pt-12 pb-16"
-        >
-          <div
-            className="absolute w-96 h-96 bg-purple-400/30 rounded-full blur-3xl transition-all duration-500 ease-out pointer-events-none"
-            style={{ left: `${mousePosition.x * 100}%`, top: `${mousePosition.y * 100}%`, transform: 'translate(-50%,-50%)' }}
-          />
-          <div
-            className="absolute w-80 h-80 bg-teal-400/20 rounded-full blur-3xl transition-all duration-700 ease-out pointer-events-none"
-            style={{ left: `${(1 - mousePosition.x) * 100}%`, top: `${(1 - mousePosition.y) * 100}%`, transform: 'translate(-50%,-50%)' }}
-          />
-          <div className="absolute opacity-20 transition-all duration-500 ease-out" style={{ left: `${20 + mousePosition.x * 10}%`, top: `${30 + mousePosition.y * 10}%`, transform: `rotate(${mousePosition.x * 20}deg)` }}>
+        <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-700 to-teal-600 pt-12 pb-16">
+          <div className="absolute opacity-20 left-1/4 top-8">
             <FlaskConical className="w-16 h-16 text-white" />
           </div>
-          <div className="absolute opacity-20 transition-all duration-700 ease-out" style={{ right: `${15 + mousePosition.x * 10}%`, top: `${40 + mousePosition.y * 15}%`, transform: `rotate(${-mousePosition.y * 20}deg)` }}>
+          <div className="absolute opacity-20 right-1/4 top-10">
             <Microscope className="w-20 h-20 text-white" />
           </div>
-          <div className="absolute opacity-20 transition-all duration-500 ease-out" style={{ left: `${60 + mousePosition.y * 10}%`, bottom: `${20 + mousePosition.x * 10}%`, transform: `rotate(${mousePosition.y * 15}deg)` }}>
-            <TestTube className="w-14 h-14 text-white" />
-          </div>
-
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="text-center">
-              <h1 className="text-5xl md:text-6xl font-bold text-white mb-6" style={{ transform: `translateY(${mousePosition.y * -10}px)` }}>
-                Lab & Pathology
-                <span className="block text-purple-200">Order Tests for Patients</span>
-              </h1>
-              <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto" style={{ transform: `translateY(${mousePosition.y * -5}px)` }}>
-                Browse 200+ lab tests, order for your patients instantly, and track results — all in one place.
-              </p>
-              <div className="flex flex-wrap justify-center gap-4 text-white">
-                {[
-                  { icon: <Shield className="w-5 h-5" />, label: 'NABL Certified' },
-                  { icon: <Zap className="w-5 h-5" />, label: 'Same-Day Results' },
-                  { icon: <HeartPulse className="w-5 h-5" />, label: '99.9% Accuracy' },
-                ].map((b, i) => (
-                  <div key={i} className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full hover:bg-white/20 hover:scale-105 transition-all duration-300">
-                    {b.icon}
-                    <span className="font-medium">{b.label}</span>
-                  </div>
-                ))}
-              </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+              Lab &amp; Pathology
+              <span className="block text-purple-200 mt-1">Order Tests for Patients</span>
+            </h1>
+            <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+              Browse 200+ lab tests, order for your confirmed patients instantly, and track results — all in one place.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-white">
+              {[
+                { icon: <Shield className="w-5 h-5" />, label: 'NABL Certified' },
+                { icon: <Zap className="w-5 h-5" />, label: 'Same-Day Results' },
+                { icon: <HeartPulse className="w-5 h-5" />, label: '99.9% Accuracy' },
+              ].map((b, i) => (
+                <div key={i} className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full hover:bg-white/20 transition-all">
+                  {b.icon}
+                  <span className="font-medium">{b.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-12">
 
-          {/* Top action bar */}
+          {/* Action bar */}
           <div className="flex items-center justify-between mb-8">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setView('requests'); setActiveTab('pending'); }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-purple-300 transition-all font-medium text-gray-700"
-              >
-                <BarChart3 className="w-4 h-4 text-purple-600" />
-                My Test Requests
-                {allTests.length > 0 && (
-                  <span className="ml-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">{allTests.length}</span>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setView('requests'); setActiveTab('pending'); }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-purple-300 transition-all font-medium text-gray-700"
+            >
+              <BarChart3 className="w-4 h-4 text-purple-600" />
+              My Test Requests
+              {testRequests.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">{testRequests.length}</span>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => openOrderModal()}
@@ -269,11 +277,11 @@ export default function LabPathology() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12">
             {[
-              { val: '2M+', label: 'Patients Served', icon: <Users size={20} /> },
-              { val: '200+', label: 'Tests Available', icon: <FlaskConical size={20} /> },
-              { val: '99.9%', label: 'Accuracy Rate', icon: <Award size={20} /> },
-              { val: '4.9★', label: 'Average Rating', icon: <Star size={20} /> },
-              { val: '50+', label: 'Cities Covered', icon: <MapPin size={20} /> },
+              { val: '2M+',  label: 'Patients Served',  icon: <Users size={20} />       },
+              { val: '200+', label: 'Tests Available',   icon: <FlaskConical size={20} />},
+              { val: '99.9%',label: 'Accuracy Rate',     icon: <Award size={20} />       },
+              { val: '4.9★', label: 'Average Rating',    icon: <Star size={20} />        },
+              { val: '50+',  label: 'Cities Covered',    icon: <MapPin size={20} />      },
             ].map((s, i) => (
               <div key={i} className="bg-white rounded-xl p-6 shadow-sm text-center hover:shadow-md transition-shadow">
                 <div className="flex justify-center mb-2 text-purple-600">{s.icon}</div>
@@ -287,23 +295,22 @@ export default function LabPathology() {
           <div className="mb-12">
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Health Packages</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {PACKAGES.map((p, i) => (
-                <div key={i} className="rounded-2xl p-6 hover:shadow-lg transition-shadow cursor-pointer" style={{ background: p.bg, border: `2px solid ${p.color}22` }}>
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: `${p.color}22`, color: p.color }}>
-                    {p.icon}
+              {PACKAGES.map(p => (
+                <div key={p.id} className={`rounded-2xl p-6 hover:shadow-lg transition-shadow border ${p.bgClass} ${p.borderClass}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-white/60 ${p.colorClass}`}>
+                    <FlaskConical size={22} />
                   </div>
                   <h3 className="text-xl font-bold text-gray-800 mb-1">{p.name}</h3>
                   <p className="text-sm text-gray-500 mb-1">{p.description}</p>
                   <p className="text-sm text-gray-600 mb-4">{p.tests} tests included</p>
                   <div className="flex items-baseline gap-2 mb-4">
-                    <span className="text-2xl font-bold" style={{ color: p.color }}>₹{p.price}</span>
+                    <span className={`text-2xl font-bold ${p.colorClass}`}>₹{p.price}</span>
                     {p.originalPrice && <span className="text-sm text-gray-400 line-through">₹{p.originalPrice}</span>}
                   </div>
                   <button
                     type="button"
                     onClick={() => openOrderModal(p.name)}
-                    className="w-full px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
-                    style={{ background: p.color }}
+                    className={`w-full px-4 py-2 text-white rounded-lg transition-colors font-medium ${p.btnClass}`}
                   >
                     Order for Patient
                   </button>
@@ -348,7 +355,7 @@ export default function LabPathology() {
                 <div className="text-center py-12 text-gray-400">No tests found for &quot;{search}&quot;</div>
               ) : filteredCatalog.map((t, i) => (
                 <div key={i} className="flex items-center p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors gap-4">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${t.color}15`, color: t.color }}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${t.bgClass} ${t.colorClass}`}>
                     <FlaskConical size={18} />
                   </div>
                   <div className="flex-1">
@@ -363,14 +370,15 @@ export default function LabPathology() {
                     </div>
                   </div>
                   <div className="text-right mr-2">
-                    <div className="text-lg font-bold" style={{ color: t.color }}>₹{t.price}</div>
+                    <div className={`text-lg font-bold ${t.colorClass}`}>₹{t.price}</div>
                     {t.originalPrice && <div className="text-xs text-gray-400 line-through">₹{t.originalPrice}</div>}
                   </div>
                   <button
                     type="button"
                     onClick={() => openOrderModal(t.name)}
-                    className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium whitespace-nowrap"
-                    style={{ background: t.color }}
+                    className={`px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap ${
+                      t.colorClass.replace('text-', 'bg-').replace('-600', '-600') + ' hover:opacity-90'
+                    }`}
                   >
                     Order for Patient
                   </button>
@@ -384,10 +392,10 @@ export default function LabPathology() {
             <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
             <div className="grid md:grid-cols-4 gap-8">
               {[
-                { n: 1, title: 'Select Test', desc: 'Choose from 200+ tests or packages', icon: <FlaskConical size={24} /> },
-                { n: 2, title: 'Assign Patient', desc: 'Pick the patient from your list', icon: <Users size={24} /> },
-                { n: 3, title: 'Lab Processing', desc: 'NABL-accredited analysis', icon: <Beaker size={24} /> },
-                { n: 4, title: 'View Results', desc: 'Digital reports in your dashboard', icon: <FileText size={24} /> },
+                { n: 1, title: 'Select Test',    desc: 'Choose from 200+ tests or packages',  icon: <FlaskConical size={24} /> },
+                { n: 2, title: 'Assign Patient', desc: 'Pick from your confirmed patients',    icon: <Users size={24} />       },
+                { n: 3, title: 'Lab Processing', desc: 'NABL-accredited analysis',             icon: <Beaker size={24} />      },
+                { n: 4, title: 'View Results',   desc: 'Digital reports in your dashboard',    icon: <FileText size={24} />    },
               ].map((s, i) => (
                 <div key={i} className="text-center">
                   <div className="relative inline-flex mb-4">
@@ -400,16 +408,26 @@ export default function LabPathology() {
               ))}
             </div>
           </div>
-
         </div>
+
+        {/* Order Modal */}
+        <OrderModal
+          show={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          onSubmit={handleCreateOrder}
+          order={newOrder}
+          setOrder={setNewOrder}
+          confirmedPatients={confirmedPatients}
+          submitting={submitting}
+          error={submitError}
+        />
       </div>
     );
   }
 
-  // ─── REQUESTS VIEW ────────────────────────────────────────────────────────
+  // ─── REQUESTS VIEW ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -437,7 +455,7 @@ export default function LabPathology() {
 
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-white rounded-xl p-1.5 border border-gray-200 w-fit">
+        <div className="flex gap-2 mb-6 bg-white rounded-xl p-1.5 border border-gray-200 w-fit flex-wrap">
           {requestTabs.map(tab => (
             <button
               key={tab.id}
@@ -467,7 +485,9 @@ export default function LabPathology() {
           <div className="space-y-4">
             {testsByPatient.length === 0 ? (
               <div className="bg-white rounded-xl p-12 text-center text-gray-400 border border-gray-200">
-                No patient test records found.
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No patient test records yet.</p>
+                <p className="text-sm mt-1">Order a test for a confirmed patient to see records here.</p>
               </div>
             ) : testsByPatient.map(({ patient, tests }) => (
               <div key={patient.userId} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -498,31 +518,7 @@ export default function LabPathology() {
                     >
                       <div className="border-t border-gray-100 divide-y divide-gray-100">
                         {tests.map(test => (
-                          <div key={test.id} className="flex items-center justify-between px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <FlaskConical className="w-4 h-4 text-purple-500" />
-                              <div>
-                                <div className="font-medium text-gray-800 text-sm">{test.testName}</div>
-                                <div className="text-xs text-gray-500">{test.orderedDate}</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                test.priority === 'Urgent' ? 'bg-red-100 text-red-700' :
-                                test.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                                'bg-gray-100 text-gray-600'
-                              }`}>
-                                {test.priority}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                test.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                test.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                                'bg-yellow-100 text-yellow-700'
-                              }`}>
-                                {test.status}
-                              </span>
-                            </div>
-                          </div>
+                          <TestRow key={test.id} test={test} />
                         ))}
                       </div>
                     </motion.div>
@@ -532,11 +528,11 @@ export default function LabPathology() {
             ))}
           </div>
         ) : (
-          /* Test list for pending / in-progress / completed */
           <div className="space-y-3">
             {getDisplayTests().length === 0 ? (
               <div className="bg-white rounded-xl p-12 text-center text-gray-400 border border-gray-200">
-                No {activeTab} tests found.
+                <FlaskConical className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No {activeTab} tests.</p>
               </div>
             ) : getDisplayTests().map(test => (
               <div key={test.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -551,24 +547,12 @@ export default function LabPathology() {
                     </div>
                     <div className="text-left">
                       <div className="font-semibold text-gray-800">{test.testName}</div>
-                      <div className="text-sm text-gray-500">{test.patientName} · {test.orderedDate}</div>
+                      <div className="text-sm text-gray-500">{test.patientName} · {test.requestDate ?? test.orderedDate ?? '—'}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      test.priority === 'Urgent' ? 'bg-red-100 text-red-700' :
-                      test.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {test.priority}
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      test.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                      test.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {test.status}
-                    </span>
+                    <PriorityBadge priority={test.priority} />
+                    <StatusBadge status={test.status} />
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${expandedTest === test.id ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
@@ -581,44 +565,7 @@ export default function LabPathology() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-gray-100 p-4 bg-gray-50 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <div className="text-gray-500 mb-1">Patient</div>
-                          <div className="font-medium text-gray-800">{test.patientName}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 mb-1">Test</div>
-                          <div className="font-medium text-gray-800">{test.testName}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 mb-1">Priority</div>
-                          <div className="font-medium text-gray-800">{test.priority}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 mb-1">Ordered</div>
-                          <div className="font-medium text-gray-800">{test.orderedDate}</div>
-                        </div>
-                        {test.reason && (
-                          <div className="col-span-2 md:col-span-4">
-                            <div className="text-gray-500 mb-1">Reason</div>
-                            <div className="font-medium text-gray-800">{test.reason}</div>
-                          </div>
-                        )}
-                        {test.result && (
-                          <div className="col-span-2 md:col-span-4">
-                            <div className="text-gray-500 mb-1">Result</div>
-                            <div className="font-medium text-gray-800">{test.result}</div>
-                          </div>
-                        )}
-                        <div className="col-span-2 md:col-span-4 flex gap-2 pt-2">
-                          <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            <Printer className="w-3.5 h-3.5" /> Print
-                          </button>
-                          <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            <Share2 className="w-3.5 h-3.5" /> Share
-                          </button>
-                        </div>
-                      </div>
+                      <TestDetail test={test} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -629,110 +576,309 @@ export default function LabPathology() {
       </div>
 
       {/* Order Modal */}
-      <AnimatePresence>
-        {showOrderModal && (
+      <OrderModal
+        show={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        onSubmit={handleCreateOrder}
+        order={newOrder}
+        setOrder={setNewOrder}
+        confirmedPatients={confirmedPatients}
+        submitting={submitting}
+        error={submitError}
+      />
+    </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────
+
+function PriorityBadge({ priority }: { priority: string }) {
+  const cls =
+    priority === 'Urgent' ? 'bg-red-100 text-red-700' :
+    priority === 'High'   ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-100 text-gray-600';
+  return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>{priority}</span>;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cls =
+    status === 'Completed'   ? 'bg-green-100 text-green-700' :
+    status === 'In Progress' ? 'bg-blue-100 text-blue-700'   :
+                               'bg-yellow-100 text-yellow-700';
+  return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>{status}</span>;
+}
+
+function TestRow({ test }: { test: TestRequest }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center gap-3">
+        <FlaskConical className="w-4 h-4 text-purple-500" />
+        <div>
+          <div className="font-medium text-gray-800 text-sm">{test.testName}</div>
+          <div className="text-xs text-gray-500">{test.requestDate ?? test.orderedDate ?? '—'}</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <PriorityBadge priority={test.priority} />
+        <StatusBadge status={test.status} />
+      </div>
+    </div>
+  );
+}
+
+function TestDetail({ test }: { test: TestRequest }) {
+  const labValues = test.labValues ?? [];
+
+  return (
+    <div className="border-t border-gray-100 bg-gray-50">
+      {/* Basic info grid */}
+      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>
+          <div className="text-gray-500 mb-1">Patient</div>
+          <div className="font-medium text-gray-800">{test.patientName}</div>
+        </div>
+        <div>
+          <div className="text-gray-500 mb-1">Test</div>
+          <div className="font-medium text-gray-800">{test.testName}</div>
+        </div>
+        <div>
+          <div className="text-gray-500 mb-1">Priority</div>
+          <PriorityBadge priority={test.priority} />
+        </div>
+        <div>
+          <div className="text-gray-500 mb-1">Ordered</div>
+          <div className="font-medium text-gray-800">{test.requestDate ?? test.orderedDate ?? '—'}</div>
+        </div>
+        {(test.diagnosisReason || test.reason) && (
+          <div className="col-span-2 md:col-span-4">
+            <div className="text-gray-500 mb-1">Clinical Reason</div>
+            <div className="font-medium text-gray-800">{test.diagnosisReason || test.reason}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Lab values report */}
+      {labValues.length > 0 && (
+        <div className="px-4 pb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-purple-600" />
+            <span className="font-semibold text-gray-800 text-sm">Lab Report</span>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Parameter</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Value</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Unit</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Reference Range</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {labValues.map((lv, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-4 py-2.5 font-medium text-gray-800">{lv.name}</td>
+                    <td className="px-4 py-2.5 text-gray-700">{lv.value}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{lv.unit}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{lv.referenceRange}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        lv.status === 'Critical'  ? 'bg-red-100 text-red-700'    :
+                        lv.status === 'Abnormal'  ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-green-100 text-green-700'
+                      }`}>
+                        {lv.status === 'Critical'  ? '⚠ Critical'  :
+                         lv.status === 'Abnormal'  ? '↑ Abnormal'  : '✓ Normal'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* No results yet */}
+      {test.status !== 'Completed' && labValues.length === 0 && (
+        <div className="px-4 pb-4">
+          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-700">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            Results will appear here once the lab completes the test.
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="px-4 pb-4 flex gap-2">
+        <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <Printer className="w-3.5 h-3.5" /> Print Report
+        </button>
+        <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <Share2 className="w-3.5 h-3.5" /> Share with Patient
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Order Modal ──────────────────────────────────────────────────────────
+
+interface OrderModalProps {
+  show: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  order: { patientId: string; testName: string; priority: TestRequest['priority']; reason: string };
+  setOrder: React.Dispatch<React.SetStateAction<{ patientId: string; testName: string; priority: TestRequest['priority']; reason: string }>>;
+  confirmedPatients: { userId?: string; name: string }[];
+  submitting: boolean;
+  error: string;
+}
+
+function OrderModal({ show, onClose, onSubmit, order, setOrder, confirmedPatients, submitting, error }: OrderModalProps) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={e => { if (e.target === e.currentTarget) setShowOrderModal(false); }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
-            >
-              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
                 <h2 className="text-xl font-bold text-gray-800">Request Lab Test</h2>
-                <button
-                  type="button"
-                  aria-label="Close modal"
-                  onClick={() => setShowOrderModal(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
+                <p className="text-sm text-gray-500 mt-0.5">Only confirmed patients are shown</p>
               </div>
-              <form onSubmit={handleCreateOrder} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Patient *</label>
+              <button
+                type="button"
+                aria-label="Close modal"
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="p-6 space-y-4">
+              {/* Patient selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Patient <span className="text-red-500">*</span>
+                </label>
+                {confirmedPatients.length === 0 ? (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    No confirmed appointments found. Accept a patient appointment first.
+                  </div>
+                ) : (
                   <select
-                    value={newOrder.patientId}
-                    onChange={e => setNewOrder(prev => ({ ...prev, patientId: e.target.value }))}
+                    value={order.patientId}
+                    onChange={e => setOrder(prev => ({ ...prev, patientId: e.target.value }))}
                     aria-label="Select patient"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 bg-white"
                     required
                   >
-                    <option value="">Select patient...</option>
-                    {patients.map(p => (
+                    <option value="">Select confirmed patient...</option>
+                    {confirmedPatients.map(p => (
                       <option key={p.userId} value={p.userId}>{p.name}</option>
                     ))}
                   </select>
+                )}
+              </div>
+
+              {/* Test name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Test Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={order.testName}
+                  onChange={e => setOrder(prev => ({ ...prev, testName: e.target.value }))}
+                  placeholder="e.g. Complete Blood Count"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800"
+                  required
+                />
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Priority</label>
+                <div className="flex gap-2">
+                  {(['Normal', 'High', 'Urgent'] as TestRequest['priority'][]).map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setOrder(prev => ({ ...prev, priority: p }))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all border ${
+                        order.priority === p
+                          ? p === 'Urgent' ? 'bg-red-500 text-white border-red-500'
+                            : p === 'High' ? 'bg-orange-500 text-white border-orange-500'
+                            : 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Test Name *</label>
-                  <input
-                    type="text"
-                    value={newOrder.testName}
-                    onChange={e => setNewOrder(prev => ({ ...prev, testName: e.target.value }))}
-                    placeholder="e.g. Complete Blood Count"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800"
-                    required
-                  />
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Clinical Reason / Notes</label>
+                <textarea
+                  value={order.reason}
+                  onChange={e => setOrder(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="Clinical indication or notes..."
+                  rows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 resize-none"
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {error}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Priority</label>
-                  <div className="flex gap-2">
-                    {(['Normal', 'High', 'Urgent'] as TestRequest['priority'][]).map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setNewOrder(prev => ({ ...prev, priority: p }))}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all border ${
-                          newOrder.priority === p
-                            ? p === 'Urgent' ? 'bg-red-500 text-white border-red-500'
-                              : p === 'High' ? 'bg-orange-500 text-white border-orange-500'
-                              : 'bg-purple-600 text-white border-purple-600'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason / Notes</label>
-                  <textarea
-                    value={newOrder.reason}
-                    onChange={e => setNewOrder(prev => ({ ...prev, reason: e.target.value }))}
-                    placeholder="Clinical indication or notes..."
-                    rows={3}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-800 resize-none"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowOrderModal(false)}
-                    className="flex-1 py-2.5 border border-gray-200 rounded-lg font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-teal-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
-                  >
-                    Submit Request
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+              )}
+
+              {/* Patient notification note */}
+              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                The patient will receive a notification about this test request.
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-lg font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || confirmedPatients.length === 0}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-teal-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

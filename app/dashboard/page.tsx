@@ -25,6 +25,7 @@ const SettingsPage = dynamic(() => import('@/components/doctor/SettingsPage'), {
 const LabPathology = dynamic(() => import('@/components/doctor/LabPathology'), { loading: () => <TabFallback /> });
 const NotificationsPage = dynamic(() => import('@/components/doctor/NotificationsPage'), { loading: () => <TabFallback /> });
 const RecordingsManager = dynamic(() => import('@/components/doctor/RecordingsManager'), { loading: () => <TabFallback /> });
+const DoctorChatAssistant = dynamic(() => import('@/components/doctor/DoctorChatAssistant'), { loading: () => <TabFallback /> });
 const DiaryPage = dynamic(
   () => import('@/components/DiaryPage').then(m => ({ default: () => <m.default role="doctor" /> })),
   { loading: () => <TabFallback /> }
@@ -38,7 +39,7 @@ function TabFallback() {
   );
 }
 
-const TAB_COMPONENTS: Record<string, React.ComponentType> = {
+const TAB_COMPONENTS: Record<string, React.ComponentType<any>> = {
   dashboard: DashboardOverview,
   patients: PatientManagement,
   'ai-predictions': AIPredictionReview,
@@ -54,6 +55,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   notifications: NotificationsPage,
   recordings: RecordingsManager,
   diary: DiaryPage,
+  'ai-chat': DoctorChatAssistant,
 };
 
 export default function DoctorDashboard() {
@@ -91,7 +93,7 @@ export default function DoctorDashboard() {
               <ArrowLeft className="w-4 h-4" />
               <span className="font-semibold text-sm">Back to Dashboard Home</span>
             </button>
-            <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl border border-white/60 overflow-hidden min-h-[70vh]">
+            <div className={`bg-white/80 backdrop-blur-md rounded-3xl shadow-xl border border-white/60 overflow-hidden min-h-[70vh] ${activeTab === 'ai-chat' ? 'flex flex-col' : ''}`}>
               <Skeleton
                 name={`doctor-tab-${activeTab}`}
                 loading={false}
@@ -99,7 +101,10 @@ export default function DoctorDashboard() {
                 fallback={<TabFallback />}
               >
                 <Suspense fallback={<TabFallback />}>
-                  <TabContent />
+                  {activeTab === 'ai-chat'
+                    ? <div className="flex-1 p-6 h-[80vh]"><TabContent /></div>
+                    : <TabContent />
+                  }
                 </Suspense>
               </Skeleton>
             </div>

@@ -7,7 +7,8 @@ import {
     Video,
     ActivitySquare,
     FlaskConical,
-    FileText
+    FileText,
+    MessageSquare,
 } from 'lucide-react';
 
 const heroFeatures = [
@@ -82,6 +83,15 @@ const smallFeatures = [
         bgColor: 'bg-indigo-50',
         iconColor: 'text-indigo-600',
         color: 'from-indigo-500 to-blue-600',
+    },
+    {
+        id: 'ai-chat',
+        title: 'AI Clinical Chat',
+        description: 'Ask clinical questions, get drug references, and discuss patient cases with AI.',
+        icon: MessageSquare,
+        bgColor: 'bg-teal-50',
+        iconColor: 'text-teal-600',
+        color: 'from-teal-500 to-cyan-600',
     },
 ];
 

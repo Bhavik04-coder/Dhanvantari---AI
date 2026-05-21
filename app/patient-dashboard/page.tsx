@@ -5,6 +5,7 @@ import PatientNavbar from '@/components/patient/PatientNavbar';
 import HeroSection from '@/components/patient/HeroSection';
 import FeatureCards from '@/components/patient/FeatureCards';
 import QuickAccessButtons from '@/components/patient/QuickAccessButtons';
+import RecentPrescriptions from '@/components/patient/RecentPrescriptions';
 import ServicesSection from '@/components/patient/ServicesSection';
 import Footer from '@/components/patient/Footer';
 import NeuralNetworkContainer from '@/components/ui/NeuralNetworkContainer';
@@ -25,6 +26,8 @@ export default function PatientDashboard() {
       <Skeleton name="patient-quick-access" loading={false} animate="shimmer">
         <QuickAccessButtons />
       </Skeleton>
+
+      <RecentPrescriptions />
 
       <Skeleton name="patient-services" loading={false} animate="shimmer">
         <ServicesSection />

@@ -6,7 +6,7 @@ import Swal from 'sweetalert2'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Stethoscope, UserCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Stethoscope, UserCircle, CheckCircle, XCircle, Loader2, ShieldCheck } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import HeartbeatTransition from '@/components/HeartbeatTransition'
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  const [userRole, setUserRole] = useState<'doctor' | 'patient'>('patient')
+  const [userRole, setUserRole] = useState<'doctor' | 'patient' | 'admin'>('patient')
   const [loading, setLoading] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
   const [formData, setFormData] = useState({
@@ -246,7 +246,11 @@ export default function LoginPage() {
 
     // Show heartbeat transition then redirect
     setRedirecting(true)
-    router.push(userRole === 'doctor' ? '/dashboard' : '/patient-dashboard')
+    if (userRole === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push(userRole === 'doctor' ? '/dashboard' : '/patient-dashboard')
+    }
   }
 
   return (
@@ -441,7 +445,8 @@ export default function LoginPage() {
 
             {/* Right Side - Form */}
             <div className="p-8 md:p-12">
-              {/* Tabs */}
+              {/* Tabs — hidden for admin (no sign-up) */}
+              {userRole !== 'admin' && (
               <div className="flex gap-2 mb-8 bg-gray-100 p-1.5 rounded-xl">
                 <button
                   type="button"
@@ -466,6 +471,7 @@ export default function LoginPage() {
                   Create Account
                 </button>
               </div>
+              )}
 
               {/* Form */}
               <AnimatePresence mode="wait">
@@ -483,7 +489,7 @@ export default function LoginPage() {
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
                       I am a
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <button
                         type="button"
                         onClick={() => setUserRole('patient')}
@@ -508,10 +514,22 @@ export default function LoginPage() {
                         <Stethoscope className="w-5 h-5" />
                         <span className="font-semibold">Doctor</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setUserRole('admin')}
+                        className={`flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border-2 transition-all ${
+                          userRole === 'admin'
+                            ? 'border-purple-500 bg-purple-50 text-purple-700'
+                            : 'border-gray-200 bg-white/50 text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        <ShieldCheck className="w-5 h-5" />
+                        <span className="font-semibold">Admin</span>
+                      </button>
                     </div>
                   </div>
 
-                  {activeTab === 'signup' && (
+                  {activeTab === 'signup' && userRole !== 'admin' && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Full Name
@@ -604,7 +622,7 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {activeTab === 'signup' && (
+                  {activeTab === 'signup' && userRole !== 'admin' && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Confirm Password

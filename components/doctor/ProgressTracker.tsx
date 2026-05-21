@@ -1,35 +1,114 @@
 'use client';
 
-import { useState } from 'react';
-import { Activity, Heart, Droplets, UserSquare2, Thermometer, Plus, X, Calendar } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Activity, Heart, Droplets, UserSquare2, Thermometer, Plus, X, Calendar,
+  Package, FlaskConical, TrendingUp,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useDoctorState } from './DoctorStateContext';
+import { useDoctorState, Patient } from './DoctorStateContext';
+import PatientActivityFeed, { type PatientActivity } from './PatientActivityFeed';
+
+function isConfirmed(status: string) {
+  return String(status).toLowerCase() === 'confirmed';
+}
 
 export default function ProgressTracker() {
-  const { patients, metrics, setMetrics } = useDoctorState();
+  const { patients, appointments, metrics, setMetrics, refreshAll } = useDoctorState();
+  const [fetchedPatients, setFetchedPatients] = useState<Patient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [showVitalsModal, setShowVitalsModal] = useState(false);
+  const [activities, setActivities] = useState<PatientActivity[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [activityTab, setActivityTab] = useState<'all' | 'medicine' | 'pathology'>('all');
   const [newVitals, setNewVitals] = useState({
     date: new Date().toISOString().split('T')[0],
-    heartRate: '', bpSys: '', bpDia: '', glucose: '', temp: ''
+    heartRate: '', bpSys: '', bpDia: '', glucose: '', temp: '',
   });
 
-  const currentPatient = patients.find(p => p.userId === selectedPatientId) || patients[0];
+  useEffect(() => {
+    refreshAll();
+    fetch('/api/doctor/patients')
+      .then(r => (r.ok ? r.json() : { patients: [] }))
+      .then(d => setFetchedPatients(d.patients ?? []))
+      .catch(() => setFetchedPatients([]));
+  }, [refreshAll]);
+
+  const selectablePatients = useMemo(() => {
+    const map = new Map<string, Patient>();
+    [...patients, ...fetchedPatients].forEach(p => {
+      const key = p.userId ?? p.name;
+      if (!map.has(key)) map.set(key, p);
+    });
+    appointments.filter(a => isConfirmed(a.status)).forEach(a => {
+      const key = a.patientUserId ?? a.patientName ?? a.id;
+      if (map.has(key)) return;
+      const matched = [...patients, ...fetchedPatients].find(
+        p =>
+          (a.patientUserId && p.userId === a.patientUserId) ||
+          (!a.patientUserId && p.name === a.patientName),
+      );
+      if (matched) map.set(key, matched);
+      else if (a.patientUserId) {
+        map.set(key, {
+          id: map.size + 1,
+          userId: a.patientUserId,
+          name: a.patientName,
+          age: 0,
+          avatar: (a.patientName ?? 'P').split(' ')[0],
+          gender: '',
+          symptoms: '',
+          disease: '',
+          confidence: 0,
+          risk: 'Low',
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [patients, fetchedPatients, appointments]);
+
+  const currentPatient =
+    selectablePatients.find(p => p.userId === selectedPatientId) ?? selectablePatients[0];
+
+  useEffect(() => {
+    if (!selectedPatientId && currentPatient?.userId) {
+      setSelectedPatientId(currentPatient.userId);
+    }
+  }, [currentPatient?.userId, selectedPatientId]);
+
+  const patientUserId = selectedPatientId || currentPatient?.userId;
+
+  useEffect(() => {
+    if (!patientUserId) {
+      setActivities([]);
+      return;
+    }
+    setLoadingActivity(true);
+    fetch(`/api/doctor/patients/${patientUserId}/activity`)
+      .then(r => (r.ok ? r.json() : { activities: [] }))
+      .then(d => setActivities(d.activities ?? []))
+      .catch(() => setActivities([]))
+      .finally(() => setLoadingActivity(false));
+  }, [patientUserId]);
+
+  const medicineCount = activities.filter(a => a.type === 'medicine').length;
+  const pathologyCount = activities.filter(a => a.type === 'pathology').length;
+
   const patientMetrics = metrics
-    .filter(m => m.patientId === currentPatient?.userId)
+    .filter(m => m.patientId === patientUserId)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const latestMetric = patientMetrics[0];
 
   const handleSaveVitals = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPatient) return;
+    if (!currentPatient?.userId) return;
 
     const res = await fetch('/api/doctor/vitals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        patientId: currentPatient.userId,  // UUID
+        patientId: currentPatient.userId,
         date: newVitals.date,
         heartRate: newVitals.heartRate,
         bpSys: newVitals.bpSys,
@@ -45,10 +124,31 @@ export default function ProgressTracker() {
     }
 
     setShowVitalsModal(false);
-    setNewVitals({ date: new Date().toISOString().split('T')[0], heartRate: '', bpSys: '', bpDia: '', glucose: '', temp: '' });
+    setNewVitals({
+      date: new Date().toISOString().split('T')[0],
+      heartRate: '', bpSys: '', bpDia: '', glucose: '', temp: '',
+    });
   };
 
-  const chartStyle = { borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' };
+  const chartStyle = {
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+  };
+
+  const activityFilter =
+    activityTab === 'medicine'
+      ? (['medicine'] as PatientActivity['type'][])
+      : activityTab === 'pathology'
+        ? (['pathology'] as PatientActivity['type'][])
+        : undefined;
+
+  const activityEmptyLabel =
+    activityTab === 'medicine'
+      ? 'No medicine orders from this patient yet.'
+      : activityTab === 'pathology'
+        ? 'No pathology bookings from this patient yet.'
+        : 'No patient-side bookings yet. Orders from Buy Medicine or Lab booking will appear here.';
 
   return (
     <div className="w-full p-6 md:p-8">
@@ -56,38 +156,71 @@ export default function ProgressTracker() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider mb-3 border border-blue-200">
-            <Activity className="w-4 h-4" /> Predictive Analytics
+            <TrendingUp className="w-4 h-4" /> Progress Tracker
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">
             Patient <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Telemetry</span>
           </h1>
-          <p className="text-gray-500 text-base">Real-time health tracking and AI-powered vital insights.</p>
+          <p className="text-gray-500 text-base">
+            Vitals, charts, and self-service bookings (medicine & pathology) from the patient app.
+          </p>
         </div>
 
         <div className="w-full md:w-96 flex gap-3 items-end">
           <div className="flex-1">
-            <label htmlFor="patient-select" className="text-gray-500 text-sm font-semibold mb-2 block">Select Patient</label>
+            <label htmlFor="patient-select" className="text-gray-500 text-sm font-semibold mb-2 block">
+              Select Patient
+            </label>
             <div className="relative">
               <select
                 id="patient-select"
-                value={selectedPatientId || (currentPatient ? currentPatient.userId ?? '' : '')}
-                onChange={(e) => setSelectedPatientId(e.target.value)}
+                value={patientUserId ?? ''}
+                onChange={e => setSelectedPatientId(e.target.value)}
                 className="w-full appearance-none bg-white border border-gray-200 text-gray-900 font-semibold py-3 pl-12 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer"
               >
-                {patients.length > 0
-                  ? patients.map(p => <option key={p.id} value={p.userId ?? p.id}>{p.name}</option>)
-                  : <option value="">No patients available</option>}
+                {selectablePatients.length > 0 ? (
+                  selectablePatients.map(p => (
+                    <option key={p.userId ?? p.id} value={p.userId ?? ''}>
+                      {p.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No patients — confirm an appointment first</option>
+                )}
               </select>
-              <UserSquare2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5" />
+              <UserSquare2 className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 w-5 h-5 pointer-events-none" />
             </div>
           </div>
           <button
             type="button"
             onClick={() => setShowVitalsModal(true)}
-            className="h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md flex items-center gap-2 whitespace-nowrap"
+            disabled={!patientUserId}
+            className="h-12 px-5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-5 h-5" /> Log Vitals
           </button>
+        </div>
+      </div>
+
+      {/* Patient booking summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+            <Package className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Medicine orders (patient)</p>
+            <p className="text-2xl font-bold text-gray-900">{medicineCount}</p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-2xl p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+            <FlaskConical className="w-6 h-6 text-purple-600" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Pathology bookings (patient)</p>
+            <p className="text-2xl font-bold text-gray-900">{pathologyCount}</p>
+          </div>
         </div>
       </div>
 
@@ -112,7 +245,9 @@ export default function ProgressTracker() {
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900">
-            {latestMetric?.bloodPressure ? `${latestMetric.bloodPressure.systolic}/${latestMetric.bloodPressure.diastolic}` : '--/--'}
+            {latestMetric?.bloodPressure
+              ? `${latestMetric.bloodPressure.systolic}/${latestMetric.bloodPressure.diastolic}`
+              : '--/--'}
           </p>
           <p className="text-gray-400 text-xs mt-1">mmHg</p>
         </div>
@@ -138,6 +273,43 @@ export default function ProgressTracker() {
           <p className="text-3xl font-bold text-gray-900">{latestMetric?.temperature || '--'}</p>
           <p className="text-gray-400 text-xs mt-1">°F</p>
         </div>
+      </div>
+
+      {/* Patient self-service activity */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-bold text-lg text-gray-900">Patient Bookings & Orders</h3>
+            <p className="text-sm text-gray-500">
+              Medicine orders and pathology tests booked by {currentPatient?.name ?? 'the patient'} from their dashboard.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'medicine', 'pathology'] as const).map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActivityTab(tab)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  activityTab === tab
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tab === 'all' ? 'All' : tab === 'medicine' ? 'Medicine' : 'Pathology'}
+                {tab === 'medicine' && medicineCount > 0 && ` (${medicineCount})`}
+                {tab === 'pathology' && pathologyCount > 0 && ` (${pathologyCount})`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <PatientActivityFeed
+          activities={activities}
+          loading={loadingActivity}
+          filterTypes={activityFilter}
+          emptyLabel={activityEmptyLabel}
+        />
       </div>
 
       {/* Charts */}
@@ -184,7 +356,11 @@ export default function ProgressTracker() {
               {patientMetrics.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={[...patientMetrics].reverse().map(m => ({ ...m, systolic: m.bloodPressure.systolic, diastolic: m.bloodPressure.diastolic }))}
+                    data={[...patientMetrics].reverse().map(m => ({
+                      ...m,
+                      systolic: m.bloodPressure.systolic,
+                      diastolic: m.bloodPressure.diastolic,
+                    }))}
                     margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                   >
                     <defs>
@@ -275,7 +451,7 @@ export default function ProgressTracker() {
                       className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl p-3 pl-12 focus:ring-2 focus:ring-blue-500 outline-none"
                       required
                     />
-                    <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
                   </div>
                 </div>
 

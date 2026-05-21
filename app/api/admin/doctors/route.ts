@@ -7,6 +7,18 @@ import { supabaseServer } from '@/lib/supabaseServer'
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return null
+
+  const sessionRole = (session.user as any).role
+
+  // Env-based admin: role is set in JWT, no Supabase row exists
+  if (
+    sessionRole === 'admin' &&
+    session.user.email.toLowerCase() === (process.env.ADMIN_EMAIL ?? '').toLowerCase()
+  ) {
+    return { id: 'admin', role: 'admin' }
+  }
+
+  // Supabase-based admin (future use)
   const { data } = await supabaseServer
     .from('users')
     .select('id, role')

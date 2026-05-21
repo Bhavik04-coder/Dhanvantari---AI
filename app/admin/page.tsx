@@ -8,7 +8,19 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) redirect('/login')
 
-  // Server-side role check — never trust client-only guards
+  const sessionRole = (session.user as any).role
+
+  // Admin credentials are env-only (not in Supabase), so trust the JWT role directly.
+  // For any other role claim, verify against Supabase to prevent spoofing.
+  if (sessionRole === 'admin') {
+    // Double-check the email matches the env-configured admin email
+    if (session.user.email.toLowerCase() !== (process.env.ADMIN_EMAIL ?? '').toLowerCase()) {
+      redirect('/')
+    }
+    return <AdminDashboard />
+  }
+
+  // Server-side role check for Supabase users — never trust client-only guards
   const { data: user } = await supabaseServer
     .from('users')
     .select('role')

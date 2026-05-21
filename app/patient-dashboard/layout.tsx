@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { PatientStateProvider } from '@/components/patient/PatientStateContext';
+import AppointmentStatusToast from '@/components/patient/AppointmentStatusToast';
 
 export const metadata: Metadata = {
   title: 'Patient Dashboard',
@@ -10,6 +11,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <PatientStateProvider>
       {children}
+      {/* Global toast — fires whenever a doctor accepts/cancels an appointment */}
+      <AppointmentStatusToast />
     </PatientStateProvider>
   );
 }

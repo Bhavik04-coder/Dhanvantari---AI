@@ -2,47 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { normalizePatientRowId } from '@/lib/patientResolve'
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  { params }: { params: { id: string } },
 ) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id: patientUserId } = params
+  const patientUserId = params.id
 
-  // 1 & 2. Verify doctor and get patient ID in parallel
-  const [doctorRes, patientRowRes] = await Promise.all([
+  const [doctorRes, patientRowRes, userRes] = await Promise.all([
     supabaseServer.from('users').select('id, role').eq('email', session.user.email).single(),
-    supabaseServer.from('patients').select('id').eq('user_id', patientUserId).single()
-  ]);
+    supabaseServer.from('patients').select('id').eq('user_id', patientUserId).maybeSingle(),
+    supabaseServer.from('users').select('full_name, email').eq('id', patientUserId).maybeSingle(),
+  ])
 
-  const userRow = doctorRes.data;
-  if (!userRow || userRow.role !== 'doctor')
+  const userRow = doctorRes.data
+  if (!userRow || userRow.role !== 'doctor') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  const patientTableId = patientRowRes.data?.id;
+  const patientTableId = normalizePatientRowId(patientRowRes.data?.id)
+  const patientDisplayName = userRes.data?.full_name ?? userRes.data?.email ?? ''
 
-  // 3. Fetch all activities in parallel
-  const [medRes, labRes, apptRes, predRes] = await Promise.all([
-    // Medicine orders (patient_id is users.id)
+  const [medRes, apptRes, predRes] = await Promise.all([
     supabaseServer
       .from('medicine_orders')
       .select('*')
       .eq('patient_id', patientUserId)
       .order('created_at', { ascending: false }),
 
-    // Pathology bookings (patient_id is patients.id)
-    patientTableId 
-      ? supabaseServer
-          .from('pathology_bookings')
-          .select('*, pathology_booking_items(*)')
-          .eq('patient_id', patientTableId)
-          .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
-
-    // Appointments (patient_id is patients.id)
     patientTableId
       ? supabaseServer
           .from('appointments')
@@ -51,7 +42,6 @@ export async function GET(
           .order('appointment_date', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
 
-    // AI Predictions (patient_id is users.id)
     supabaseServer
       .from('ai_predictions')
       .select('*')
@@ -59,37 +49,81 @@ export async function GET(
       .order('created_at', { ascending: false }),
   ])
 
-  // 4. Normalize and combine
+  const labSeen = new Set<string>()
+  const labRows: Record<string, unknown>[] = []
+
+  if (patientTableId) {
+    const { data } = await supabaseServer
+      .from('pathology_bookings')
+      .select('*, pathology_booking_items(*)')
+      .eq('patient_id', patientTableId)
+      .order('created_at', { ascending: false })
+    for (const b of (data ?? []) as Record<string, unknown>[]) {
+      const id = String(b.id)
+      if (!labSeen.has(id)) {
+        labSeen.add(id)
+        labRows.push(b)
+      }
+    }
+  }
+
+  if (patientDisplayName) {
+    const { data } = await supabaseServer
+      .from('pathology_bookings')
+      .select('*, pathology_booking_items(*)')
+      .ilike('full_name', `%${patientDisplayName.trim()}%`)
+      .order('created_at', { ascending: false })
+    for (const b of (data ?? []) as Record<string, unknown>[]) {
+      const id = String(b.id)
+      if (!labSeen.has(id)) {
+        labSeen.add(id)
+        labRows.push(b)
+      }
+    }
+  }
+
+  const normalizeItems = (raw: unknown) => {
+    if (!Array.isArray(raw)) return []
+    return raw.map((item: Record<string, unknown>) => ({
+      name: (item.name ?? item.medicine_name ?? item.test_name ?? 'Item') as string,
+      price: item.price as number | undefined,
+      quantity: item.quantity as number | undefined,
+    }))
+  }
+
   const medicineOrders = (medRes.data ?? []).map(o => ({
     id: o.id,
-    type: 'medicine',
+    type: 'medicine' as const,
     date: o.created_at,
     status: o.status,
     total: o.total,
-    items: o.items,
+    items: normalizeItems(o.items),
     details: {
-      address: o.delivery_address,
-      payment: o.payment_method
-    }
+      address: o.delivery_address ?? o.address,
+      payment: o.payment_method,
+    },
   }))
 
-  const labBookings = (labRes.data ?? []).map(b => ({
+  const labBookings = labRows.map(b => ({
     id: b.id,
-    type: 'pathology',
+    type: 'pathology' as const,
     date: b.created_at,
     status: b.status,
     total: b.total,
-    items: (b.pathology_booking_items ?? []).map((i: any) => ({ name: i.test_name, price: i.price })),
+    items: ((b.pathology_booking_items as Record<string, unknown>[]) ?? []).map(i => ({
+      name: i.test_name as string,
+      price: i.price as number,
+    })),
     details: {
       preferredDate: b.preferred_date,
       preferredTime: b.preferred_time,
-      address: `${b.address_line1}, ${b.city}`
-    }
+      address: [b.address_line1, b.city].filter(Boolean).join(', '),
+    },
   }))
 
   const appointments = (apptRes.data ?? []).map(a => ({
     id: a.id,
-    type: 'appointment',
+    type: 'appointment' as const,
     date: a.appointment_date,
     status: a.status,
     title: a.type,
@@ -97,13 +131,13 @@ export async function GET(
       time: a.appointment_time,
       mode: a.mode,
       doctor: a.doctor_name,
-      reason: a.reason
-    }
+      reason: a.reason,
+    },
   }))
 
   const predictions = (predRes.data ?? []).map(p => ({
     id: p.id,
-    type: 'prediction',
+    type: 'prediction' as const,
     date: p.created_at,
     status: p.status,
     title: p.disease,
@@ -111,13 +145,19 @@ export async function GET(
       confidence: p.confidence,
       symptoms: p.symptoms,
       explanation: p.explanation,
-      initiatedBy: p.initiated_by
-    }
+      initiatedBy: p.initiated_by,
+    },
   }))
 
   const activities = [...medicineOrders, ...labBookings, ...appointments, ...predictions].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )
 
-  return NextResponse.json({ activities })
+  return NextResponse.json({
+    activities,
+    summary: {
+      medicineOrders: medicineOrders.length,
+      pathologyBookings: labBookings.length,
+    },
+  })
 }

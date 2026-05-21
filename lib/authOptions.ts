@@ -34,6 +34,21 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null
 
         const email = credentials.email.toLowerCase().trim()
+
+        // ── Admin login — no Supabase, credentials from env ──────────────
+        if (
+          credentials.role === 'admin' &&
+          email === (process.env.ADMIN_EMAIL ?? '').toLowerCase() &&
+          credentials.password === process.env.ADMIN_PASSWORD
+        ) {
+          return {
+            id: 'admin',
+            email,
+            name: 'Admin',
+            role: 'admin',
+          }
+        }
+
         const role = (credentials.role === 'doctor' ? 'doctor' : 'patient') as 'doctor' | 'patient'
 
         const { data: existing } = await supabaseServer

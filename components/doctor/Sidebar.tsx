@@ -19,6 +19,7 @@ import {
   ChevronRight,
   BookOpen,
   Video,
+  MessageSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -41,6 +42,7 @@ const menuItems = [
   { id: 'notifications', label: 'Notifications', icon: Bell, badge: 5 },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
   { id: 'diary', label: 'Clinical Diary', icon: BookOpen },
+  { id: 'ai-chat', label: 'AI Chat', icon: MessageSquare },
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

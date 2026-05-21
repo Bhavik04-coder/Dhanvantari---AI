@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Eye, Download, X, Package, Activity, Calendar, Clock, Brain } from 'lucide-react';
+import { Search, Filter, Eye, Download, X } from 'lucide-react';
+import PatientActivityFeed from './PatientActivityFeed';
 import Swal from 'sweetalert2';
 import ProgressBar from './ProgressBar';
 import jsPDF from 'jspdf';
@@ -59,16 +60,6 @@ export default function PatientManagement() {
       case 'Medium': return 'bg-yellow-100 text-yellow-700';
       case 'Low': return 'bg-green-100 text-green-700';
       default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'medicine': return <Package className="w-5 h-5 text-blue-500" />;
-      case 'pathology': return <Activity className="w-5 h-5 text-purple-500" />;
-      case 'appointment': return <Calendar className="w-5 h-5 text-teal-500" />;
-      case 'prediction': return <Brain className="w-5 h-5 text-indigo-500" />;
-      default: return <Clock className="w-5 h-5 text-gray-400" />;
     }
   };
 
@@ -295,62 +286,11 @@ export default function PatientManagement() {
 
               <div>
                 <h3 className="text-sm font-bold tracking-wider text-gray-400 uppercase mb-4">Activity History</h3>
-                {loadingActivity ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : activities.length === 0 ? (
-                  <div className="text-center py-8 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <p className="text-gray-400">No recent activity found for this patient.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {activities.map((activity, idx) => (
-                      <div key={idx} className="flex gap-4 p-4 rounded-2xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-all group">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center border border-gray-100 group-hover:scale-110 transition-transform">
-                          {getActivityIcon(activity.type)}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-bold text-gray-900 capitalize">
-                              {activity.type === 'medicine' ? 'Medicine Order' : 
-                               activity.type === 'pathology' ? 'Pathology Booking' :
-                               activity.type === 'appointment' ? activity.title :
-                               activity.title}
-                            </h4>
-                            <span className="text-xs text-gray-400 font-medium">
-                              {new Date(activity.date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-500 line-clamp-1">
-                            {activity.type === 'medicine' && `${activity.items.length} items • Total: ₹${activity.total}`}
-                            {activity.type === 'pathology' && `${activity.items.map((i: any) => i.name).join(', ')}`}
-                            {activity.type === 'appointment' && `Mode: ${activity.details.mode} • Status: ${activity.status}`}
-                            {activity.type === 'prediction' && `Confidence: ${activity.details.confidence}% • Status: ${activity.status}`}
-                          </p>
-                          {activity.type === 'medicine' && activity.details.address && (
-                            <p className="text-xs text-gray-400 mt-1 italic">Deliver to: {activity.details.address}</p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end justify-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            activity.status?.toLowerCase() === 'completed' || activity.status?.toLowerCase() === 'delivered' || activity.status?.toLowerCase() === 'confirmed'
-                              ? 'bg-green-100 text-green-700'
-                              : activity.status?.toLowerCase() === 'cancelled' || activity.status?.toLowerCase() === 'rejected'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {activity.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <PatientActivityFeed
+                  activities={activities}
+                  loading={loadingActivity}
+                  emptyLabel="No recent activity found for this patient."
+                />
               </div>
             </div>
 

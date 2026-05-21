@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { ensurePatientRowId } from '@/lib/patientResolve'
 
 async function getPatientRow(email: string) {
   const { data: userRow } = await supabaseServer
@@ -28,6 +29,14 @@ export async function POST(req: NextRequest) {
   if (!tests || tests.length === 0)
     return NextResponse.json({ error: 'No tests provided' }, { status: 400 })
 
+  const patientRowId = await ensurePatientRowId(
+    patient.id,
+    patient.full_name ?? session.user.email ?? undefined,
+  )
+  if (!patientRowId) {
+    return NextResponse.json({ error: 'Patient profile could not be created.' }, { status: 400 })
+  }
+
   const bookingId = `LAB-${Date.now()}`
   const total = tests.reduce((sum: number, t: { price?: number }) => sum + (t.price ?? 0), 0)
 
@@ -36,7 +45,7 @@ export async function POST(req: NextRequest) {
     .from('pathology_bookings')
     .insert({
       id: bookingId,
-      patient_id: patient.patientId,
+      patient_id: patientRowId,
       total,
       status: 'pending',
       full_name: patient.full_name ?? session.user.email,

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, Brain, AlertTriangle, Calendar } from 'lucide-react';
+import { Users, Brain, AlertTriangle, Calendar, MessageSquare } from 'lucide-react';
 import StatCard from './StatCard';
 import { useDoctorState } from './DoctorStateContext';
 import { useSession } from 'next-auth/react';
 
-export default function DashboardOverview() {
+export default function DashboardOverview({ setActiveTab }: { setActiveTab?: (tab: string) => void }) {
   const [isOnline, setIsOnline] = useState(true);
   const { patients, appointments, predictions, notifications } = useDoctorState();
   const { data: session } = useSession();
@@ -102,14 +102,15 @@ export default function DashboardOverview() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             {[
-              { label: 'New Prescription', icon: '📝', color: 'blue' },
-              { label: 'Schedule Appointment', icon: '📅', color: 'green' },
-              { label: 'Review AI Predictions', icon: '🤖', color: 'purple' },
-              { label: 'Consult Specialist', icon: '👨‍⚕️', color: 'orange' },
+              { label: 'New Prescription', icon: '📝', color: 'blue', tab: 'prescriptions' },
+              { label: 'Schedule Appointment', icon: '📅', color: 'green', tab: 'appointments' },
+              { label: 'Review AI Predictions', icon: '🤖', color: 'purple', tab: 'ai-predictions' },
+              { label: 'AI Clinical Chat', icon: '💬', color: 'indigo', tab: 'ai-chat' },
             ].map((action, index) => (
               <button
                 type="button"
                 key={index}
+                onClick={() => setActiveTab?.(action.tab)}
                 className={`w-full flex items-center gap-3 p-4 bg-gradient-to-r from-${action.color}-50 to-transparent rounded-xl hover:shadow-md transition-all duration-200`}
               >
                 <span className="text-2xl">{action.icon}</span>

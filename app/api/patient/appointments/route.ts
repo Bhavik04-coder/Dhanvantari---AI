@@ -24,10 +24,13 @@ export async function GET() {
   const patient = await getPatientRow(session.user.email)
   if (!patient) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  if (!patient.patientRowId)
+    return NextResponse.json({ appointments: [] })
+
   const { data, error } = await supabaseServer
     .from('appointments')
     .select('*')
-    .eq('patient_id', patient.patientRowId ?? patient.id)
+    .eq('patient_id', patient.patientRowId)
     .order('appointment_date', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

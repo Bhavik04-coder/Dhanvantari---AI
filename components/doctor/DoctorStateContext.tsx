@@ -10,6 +10,8 @@ export type Patient = {
   userId?: string;
   name: string;
   age: number;
+  gender?: string;
+  blood_group?: string;
   symptoms: string;
   disease: string;
   confidence: number;
@@ -20,7 +22,8 @@ export type Patient = {
 export type Appointment = {
   id: string;
   patientName: string;
-  patientId?: string | null;
+  patientId?: string | null;      // patients.id (FK in appointments table)
+  patientUserId?: string | null;  // users.id — matches Patient.userId
   time: string;
   date: string;
   type: string;
@@ -164,18 +167,19 @@ export function DoctorStateProvider({ children }: { children: ReactNode }) {
         if (eventType === 'INSERT') {
           if (prev.some(x => x.id === apt.id)) return prev;
           const mapped: Appointment = {
-            id:          apt.id,
-            patientName: apt.patientName ?? 'Patient',
-            patientId:   apt.patientId ?? null,
-            date:        apt.date,
-            time:        apt.time,
-            type:        apt.type,
-            mode:        apt.mode,
-            status:      apt.status,
-            reason:      apt.reason,
-            initiatedBy: apt.initiatedBy,
-            meetLink:    apt.meetLink ?? null,
-            avatar:      (apt.patientName ?? 'P').split(' ')[0],
+            id:            apt.id,
+            patientName:   apt.patientName ?? 'Patient',
+            patientId:     apt.patientId ?? null,
+            patientUserId: null, // resolved on next full fetch
+            date:          apt.date,
+            time:          apt.time,
+            type:          apt.type,
+            mode:          apt.mode,
+            status:        apt.status,
+            reason:        apt.reason,
+            initiatedBy:   apt.initiatedBy,
+            meetLink:      apt.meetLink ?? null,
+            avatar:        (apt.patientName ?? 'P').split(' ')[0],
           };
           return [mapped, ...prev];
         }
@@ -207,7 +211,10 @@ export function DoctorStateProvider({ children }: { children: ReactNode }) {
       );
 
       if (pData.patients) setPatients(pData.patients);
-      if (aData.appointments) setAppointments(aData.appointments);
+      if (aData.appointments) setAppointments(aData.appointments.map((a: any) => ({
+        ...a,
+        patientUserId: a.patientUserId ?? null,
+      })));
       if (prData.predictions) setPredictions(prData.predictions);
       if (tData.tests) setTestRequests(tData.tests);
       if (vData.metrics) setMetrics(vData.metrics);

@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createCalendarEvent, getValidAccessToken } from '@/lib/googleCalendar'
+import { linkDoctorPatient } from '@/lib/prescriptionService'
+import {
+  doctorAppointmentFilterIds,
+  normalizePatientRowId,
+  resolvePatientRowIdsToUserIds,
+} from '@/lib/patientResolve'
 
 async function getDoctorRow(email: string) {
   const { data } = await supabaseServer
@@ -24,18 +30,25 @@ export async function GET() {
   const doctor = await getDoctorRow(session.user.email)
   if (!doctor) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const doctorFilterIds = doctorAppointmentFilterIds(doctor.id, doctor.doctorRowId)
+
   const { data, error } = await supabaseServer
     .from('appointments')
     .select('*')
-    .eq('doctor_id', doctor.doctorRowId ?? doctor.id)
+    .in('doctor_id', doctorFilterIds)
     .order('appointment_date', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const patientRowToUserId = await resolvePatientRowIdsToUserIds(
+    (data ?? []).map((a: Record<string, unknown>) => a.patient_id),
+  )
 
   const appointments = (data ?? []).map((a: Record<string, unknown>) => ({
     id: a.id,
     patientName: a.patient_name,
     patientId: a.patient_id,
+    patientUserId: patientRowToUserId[normalizePatientRowId(a.patient_id) ?? ''] ?? null,
     date: a.appointment_date,
     time: a.appointment_time,
     type: a.type,
@@ -174,6 +187,10 @@ export async function POST(req: NextRequest) {
     .select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (patientId) {
+    await linkDoctorPatient(doctor.id, patientId)
+  }
 
   // Notify patient
   if (patientId) {
@@ -348,6 +365,10 @@ export async function PATCH(req: NextRequest) {
     .eq('doctor_id', doctor.doctorRowId ?? doctor.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (status === 'Confirmed' && patientUserId) {
+    await linkDoctorPatient(doctor.id, patientUserId)
+  }
 
   // Notify patient — patient_notifications.patient_id = users.id
   if (patientUserId || existing.patient_id) {
